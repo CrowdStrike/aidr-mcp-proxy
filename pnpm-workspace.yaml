@@ -1,0 +1,11 @@
+packages:
+  - .
+
+onlyBuiltDependencies:
+  - "@biomejs/biome"
+  - esbuild
+  - lefthook
+  - protobufjs
+
+injectWorkspacePackages: true
+strictPeerDependencies: true
