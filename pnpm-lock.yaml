@@ -10,7 +10,7 @@ importers:
   .:
     dependencies:
       '@crowdstrike/aidr':
-        specifier: 1.0.2
+        specifier: ^1.0.2
         version: 1.0.2(typescript@5.9.3)
       '@modelcontextprotocol/sdk':
         specifier: ^1.24.3
