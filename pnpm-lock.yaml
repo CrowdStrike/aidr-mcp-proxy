@@ -5,6 +5,8 @@ settings:
   excludeLinksFromLockfile: false
   injectWorkspacePackages: true
 
+pnpmfileChecksum: sha256-fRDq6XQBbvBU1LbdEXxazQ/N4IsxGyLaFZ7n0lciQAw=
+
 importers:
 
   .:
