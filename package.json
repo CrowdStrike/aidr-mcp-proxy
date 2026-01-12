@@ -28,7 +28,7 @@
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
-    "@crowdstrike/aidr": "^1.0.2",
+    "@crowdstrike/aidr": "1.0.2",
     "@modelcontextprotocol/sdk": "^1.24.3",
     "citty": "^0.1.6",
     "consola": "^3.4.2"
@@ -39,7 +39,7 @@
     "@tsconfig/node22": "22.0.5",
     "@types/node": "22.19.1",
     "conventional-changelog-conventionalcommits": "9.1.0",
-    "lefthook": "2.0.4",
+    "lefthook": "1.11.8",
     "semantic-release": "25.0.2",
     "tsdown": "0.17.2",
     "typescript": "5.9.3"
