@@ -52,7 +52,7 @@ environment variables:
       ],
       "env": {
         "CS_AIDR_TOKEN": "cs_00000000000000000000000000000000",
-        "CS_AIDR_BASE_URL_TEMPLATE": "https://api.falcon.crowdstrike.com/aidr/{SERVICE_NAME}"
+        "CS_AIDR_BASE_URL_TEMPLATE": "https://api.crowdstrike.com/aidr/{SERVICE_NAME}"
       }
     }
   }
@@ -82,7 +82,7 @@ servers:
       ],
       "env": {
         "CS_AIDR_TOKEN": "cs_00000000000000000000000000000000",
-        "CS_AIDR_BASE_URL_TEMPLATE": "https://api.falcon.crowdstrike.com/aidr/{SERVICE_NAME}"
+        "CS_AIDR_BASE_URL_TEMPLATE": "https://api.crowdstrike.com/aidr/{SERVICE_NAME}"
       }
     }
   }
