@@ -47,7 +47,6 @@ const main = defineCommand({
       command: args._[0],
       args: args._.slice(1),
       env: process.env as Record<string, string>,
-      stderr: 'pipe',
     });
     const client = new Client(
       {
