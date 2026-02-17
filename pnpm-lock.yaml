@@ -12,8 +12,8 @@ importers:
   .:
     dependencies:
       '@crowdstrike/aidr':
-        specifier: 1.0.2
-        version: 1.0.2(typescript@5.9.3)
+        specifier: ^1.1.1
+        version: 1.1.1(typescript@5.9.3)
       '@modelcontextprotocol/sdk':
         specifier: ^1.25.2
         version: 1.25.3(hono@4.11.5)(zod@4.3.6)
@@ -154,8 +154,8 @@ packages:
     peerDependencies:
       semantic-release: ^24.0.0 || ^25.0.0
 
-  '@crowdstrike/aidr@1.0.2':
-    resolution: {integrity: sha512-NRRmaDCk2KiE4t0FK0YPIyAd5HTG91epcoalVJ174OIaaqDEvN8Nzr8Gx2nX0Iq67VeuuG8s0FhB5clLZXl2Fw==}
+  '@crowdstrike/aidr@1.1.1':
+    resolution: {integrity: sha512-qjf+84a9/jbLDTQ41eRA2F7KnJFiF/F/pyjJYS1+35pbB4qr5YJxx/KuxBpYRySgqef0RTIHf0VpNd0unoTQ7w==}
 
   '@emnapi/core@1.8.1':
     resolution: {integrity: sha512-AvT9QFpxK0Zd8J0jopedNm+w/2fIzvtPKPjqyw9jwvBaReTTqPBk9Hixaz7KbjimP+QNz605/XnjFcDAL2pqBg==}
@@ -2076,7 +2076,7 @@ snapshots:
       semantic-release: 25.0.2(typescript@5.9.3)
       semver: 7.7.3
 
-  '@crowdstrike/aidr@1.0.2(typescript@5.9.3)':
+  '@crowdstrike/aidr@1.1.1(typescript@5.9.3)':
     dependencies:
       valibot: 1.2.0(typescript@5.9.3)
     transitivePeerDependencies:
