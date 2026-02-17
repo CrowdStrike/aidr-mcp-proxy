@@ -143,7 +143,7 @@ const main = defineCommand({
             messages: [
               {
                 role: 'user',
-                content: JSON.stringify(args.params.arguments) ?? '',
+                content: JSON.stringify(args.params.arguments),
               },
             ],
           },
