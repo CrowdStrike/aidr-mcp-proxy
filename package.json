@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@crowdstrike/aidr": "^1.1.1",
-    "@modelcontextprotocol/sdk": "^1.25.2",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "citty": "^0.1.6",
     "consola": "^3.4.2"
   },
