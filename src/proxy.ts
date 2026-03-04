@@ -65,6 +65,7 @@ const main = defineCommand({
     const serverVersion: Implementation = client.getServerVersion()!;
     const server = new Server(serverVersion, {
       capabilities: serverCapabilities,
+      instructions: client.getInstructions(),
     });
 
     if (serverCapabilities?.logging) {
