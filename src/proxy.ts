@@ -9,7 +9,9 @@ import {
   CallToolRequestSchema,
   type CallToolResult,
   CompleteRequestSchema,
+  type ContentBlock,
   GetPromptRequestSchema,
+  type ImageContent,
   type Implementation,
   ListPromptsRequestSchema,
   ListResourcesRequestSchema,
@@ -20,10 +22,36 @@ import {
   ReadResourceRequestSchema,
   ResourceUpdatedNotificationSchema,
   SubscribeRequestSchema,
+  type TextContent,
   UnsubscribeRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { defineCommand, runMain } from 'citty';
 import { consola } from 'consola';
+
+interface TextContentPart {
+  type: 'text';
+  text: string;
+}
+
+interface ImageUrl {
+  url: string;
+}
+
+interface ImageUrlContentPart {
+  type: 'image_url';
+  image_url: ImageUrl;
+}
+
+type ContentPart = TextContentPart | ImageUrlContentPart;
+type MessageContent = string | ContentPart[] | null;
+
+function isTextContent(x: ContentBlock): x is TextContent {
+  return x.type === 'text';
+}
+
+function isImageContent(x: ContentBlock): x is ImageContent {
+  return x.type === 'image';
+}
 
 const main = defineCommand({
   args: {},
@@ -257,14 +285,28 @@ const main = defineCommand({
             }
           }
         } else {
-          // Process text content from tools that don't return structuredContent
-          for (const contentItem of content.filter((c) => c.type === 'text')) {
+          // Process content from tools that don't return structuredContent.
+          // Content types other than "text" and "image" are not supported by
+          // CrowdStrike AIDR.
+          for (const contentItem of content.filter(
+            (c) => isTextContent(c) || isImageContent(c)
+          )) {
+            const content: MessageContent = isTextContent(contentItem)
+              ? contentItem.text
+              : [
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: `data:${contentItem.mimeType};base64,${contentItem.data}`,
+                    },
+                  },
+                ];
             const guardedOutput = await aiGuard.guardChatCompletions({
               guard_input: {
                 messages: [
                   {
                     role: 'tool',
-                    content: contentItem.text,
+                    content,
                   },
                 ],
               },
@@ -294,7 +336,10 @@ const main = defineCommand({
               };
             }
 
-            if (guardedOutput.result?.transformed) {
+            if (
+              isTextContent(contentItem) &&
+              guardedOutput.result?.transformed
+            ) {
               contentItem.text = (
                 guardedOutput.result.guard_output?.messages as {
                   content: string;
