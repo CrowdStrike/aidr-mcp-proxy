@@ -46,7 +46,10 @@ const main = defineCommand({
     const clientTransport = new StdioClientTransport({
       command: args._[0],
       args: args._.slice(1),
-      env: process.env as Record<string, string>,
+      env: { ...process.env, CS_AIDR_TOKEN: undefined } as unknown as Record<
+        string,
+        string
+      >,
     });
     const client = new Client(
       {
