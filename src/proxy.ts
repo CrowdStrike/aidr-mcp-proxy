@@ -74,10 +74,11 @@ const main = defineCommand({
     const clientTransport = new StdioClientTransport({
       command: args._[0],
       args: args._.slice(1),
-      env: { ...process.env, CS_AIDR_TOKEN: undefined } as unknown as Record<
-        string,
-        string
-      >,
+      env: {
+        ...process.env,
+        CS_AIDR_TOKEN: undefined,
+        CS_AIDR_USER_ID: undefined,
+      } as unknown as Record<string, string>,
     });
     const client = new Client(
       {
@@ -152,6 +153,7 @@ const main = defineCommand({
           guard_input: { messages: [], tools },
           app_id: process.env.APP_ID,
           event_type: 'tool_listing',
+          user_id: process.env.CS_AIDR_USER_ID,
           extra_info: {
             app_name: process.env.APP_NAME,
             mcp_server_name: serverVersion.name,
@@ -181,6 +183,7 @@ const main = defineCommand({
           },
           app_id: process.env.APP_ID,
           event_type: 'tool_input',
+          user_id: process.env.CS_AIDR_USER_ID,
           extra_info: {
             app_name: process.env.APP_NAME,
             mcp_server_name: serverVersion.name,
@@ -235,6 +238,7 @@ const main = defineCommand({
             },
             app_id: process.env.APP_ID,
             event_type: 'tool_output',
+            user_id: process.env.CS_AIDR_USER_ID,
             extra_info: {
               app_name: process.env.APP_NAME,
               mcp_server_name: serverVersion.name,
@@ -312,6 +316,7 @@ const main = defineCommand({
               },
               app_id: process.env.APP_ID,
               event_type: 'tool_output',
+              user_id: process.env.CS_AIDR_USER_ID,
               extra_info: {
                 app_name: process.env.APP_NAME,
                 mcp_server_name: serverVersion.name,
