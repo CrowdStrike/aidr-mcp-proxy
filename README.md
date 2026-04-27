@@ -99,4 +99,9 @@ environment variable.
 To identify the calling app by name in CrowdStrike AIDR, set the `APP_NAME`
 environment variable.
 
+### User ID
+
+To identify the calling user by ID in CrowdStrike AIDR, set the
+`CS_AIDR_USER_ID` environment variable.
+
 [mcp-remote]: https://github.com/geelen/mcp-remote
