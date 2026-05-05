@@ -104,4 +104,15 @@ environment variable.
 To identify the calling user by ID in CrowdStrike AIDR, set the
 `CS_AIDR_USER_ID` environment variable.
 
+### Proxies
+
+See the [AIDR documentation](https://aidr-docs.crowdstrike.com/docs/aidr#cloud-origins)
+for connectivity requirements.
+
+The AIDR MCP Proxy automatically reads proxy configuration from the environment
+variables `http_proxy`, `https_proxy`, and `no_proxy`. Uppercase environment
+variables are also supported: `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY`. If
+both the lowercase and uppercase environment variables are set, the uppercase
+environment variables will be ignored.
+
 [mcp-remote]: https://github.com/geelen/mcp-remote

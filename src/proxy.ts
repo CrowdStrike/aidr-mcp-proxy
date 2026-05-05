@@ -27,6 +27,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { defineCommand, runMain } from 'citty';
 import { consola } from 'consola';
+import { EnvHttpProxyAgent } from 'undici';
 
 interface TextContentPart {
   type: 'text';
@@ -141,9 +142,13 @@ const main = defineCommand({
     }
 
     if (serverCapabilities?.tools) {
+      const dispatcher =
+        new EnvHttpProxyAgent() as unknown as RequestInit['dispatcher'];
       const aiGuard = new AIGuard({
         token: process.env.CS_AIDR_TOKEN!,
         baseURLTemplate: process.env.CS_AIDR_BASE_URL_TEMPLATE!,
+        fetch: (url: string | URL | Request, init?: RequestInit) =>
+          fetch(url, { ...init, dispatcher }),
       });
 
       server.setRequestHandler(ListToolsRequestSchema, async (args) => {
