@@ -79,6 +79,7 @@ const main = defineCommand({
         ...process.env,
         CS_AIDR_TOKEN: undefined,
         CS_AIDR_USER_ID: undefined,
+        CS_AIDR_USER_NAME: undefined,
       } as unknown as Record<string, string>,
     });
     const client = new Client(
@@ -162,6 +163,7 @@ const main = defineCommand({
           extra_info: {
             app_name: process.env.APP_NAME,
             mcp_server_name: serverVersion.name,
+            user_name: process.env.CS_AIDR_USER_NAME,
           },
         });
 
@@ -193,6 +195,7 @@ const main = defineCommand({
             app_name: process.env.APP_NAME,
             mcp_server_name: serverVersion.name,
             tool_name: args.params.name,
+            user_name: process.env.CS_AIDR_USER_NAME,
           },
         });
 
