@@ -104,6 +104,11 @@ environment variable.
 To identify the calling user by ID in CrowdStrike AIDR, set the
 `CS_AIDR_USER_ID` environment variable.
 
+### User name
+
+To identify the calling user by name in CrowdStrike AIDR, set the
+`CS_AIDR_USER_NAME` environment variable.
+
 ### Proxies
 
 See the [AIDR documentation](https://aidr-docs.crowdstrike.com/docs/aidr#cloud-origins)
