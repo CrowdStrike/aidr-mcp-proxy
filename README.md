@@ -3,7 +3,8 @@
 Protect communications between a client and any MCP server. Now with 99% less
 prompt injection! The CrowdStrike AIDR MCP proxy allows any MCP client to secure
 the messages it sends and receives to/from an MCP server, using the CrowdStrike
-AIDR service to guard tools' inputs and outputs.
+AIDR service to guard tools' inputs and outputs, prompt content, and resource
+content.
 
 What it does: protect users from common threat vectors by running all MCP I/O
 through CrowdStrike AIDR, which blocks:
