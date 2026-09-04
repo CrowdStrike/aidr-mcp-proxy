@@ -54,10 +54,62 @@ export interface ProxyIdentity {
   userName?: string;
 }
 
+interface GuardedTextOutcome {
+  blocked: boolean;
+  blockedReason?: unknown;
+  text: string;
+}
+
+/**
+ * Runs a single piece of server-originated text (a prompt message, a
+ * resource's contents) through AIDR the same way tool output already is:
+ * as a single 'tool' role message. Returns the (possibly transformed) text,
+ * or the block reason if AIDR blocked it.
+ */
+async function guardServerText(
+  aiGuard: AIGuard,
+  text: string,
+  eventType: string,
+  identity: ProxyIdentity,
+  mcpServerName: string | undefined,
+  extraInfo: Record<string, unknown>
+): Promise<GuardedTextOutcome> {
+  const guarded = await aiGuard.guardChatCompletions({
+    guard_input: { messages: [{ role: 'tool', content: text }] },
+    app_id: identity.appId,
+    event_type: eventType,
+    user_id: identity.userId,
+    extra_info: {
+      app_name: identity.appName,
+      mcp_server_name: mcpServerName,
+      user_name: identity.userName,
+      ...extraInfo,
+    },
+  });
+
+  if (guarded.status !== 'Success') {
+    throw new Error(`Failed to guard ${eventType}.`);
+  }
+
+  if (guarded.result?.blocked) {
+    const { guard_output, ...rest } = guarded.result;
+    return { blocked: true, blockedReason: rest, text };
+  }
+
+  if (guarded.result?.transformed) {
+    const messages = guarded.result.guard_output?.messages as
+      | { content: string }[]
+      | undefined;
+    return { blocked: false, text: messages?.[0]?.content ?? text };
+  }
+
+  return { blocked: false, text };
+}
+
 /**
  * Builds the MCP server exposed to the proxy's caller, wiring every
  * request/notification through to the given (already-connected) upstream
- * client, with tool input/output guarded by AIDR.
+ * client, with tool, prompt, and resource I/O guarded by AIDR.
  */
 export function createProxyServer(
   client: Client,
@@ -78,12 +130,39 @@ export function createProxyServer(
   }
 
   if (serverCapabilities?.prompts) {
-    server.setRequestHandler(GetPromptRequestSchema, (args) =>
-      client.getPrompt(args.params)
-    );
     server.setRequestHandler(ListPromptsRequestSchema, (args) =>
       client.listPrompts(args.params)
     );
+    server.setRequestHandler(GetPromptRequestSchema, async (args) => {
+      const response = await client.getPrompt(args.params);
+
+      for (const message of response.messages) {
+        if (!isTextContent(message.content)) {
+          // Image/audio prompt content isn't supported by CrowdStrike AIDR,
+          // same limitation as tool output below.
+          continue;
+        }
+
+        const outcome = await guardServerText(
+          aiGuard,
+          message.content.text,
+          'prompt_output',
+          identity,
+          serverVersion.name,
+          { prompt_name: args.params.name }
+        );
+
+        if (outcome.blocked) {
+          throw new Error(
+            `Prompt has been blocked by CrowdStrike AIDR.\n\n${JSON.stringify(outcome.blockedReason, null, 2)}`
+          );
+        }
+
+        message.content.text = outcome.text;
+      }
+
+      return response;
+    });
   }
 
   if (serverCapabilities?.resources) {
@@ -93,9 +172,36 @@ export function createProxyServer(
     server.setRequestHandler(ListResourceTemplatesRequestSchema, (args) =>
       client.listResourceTemplates(args.params)
     );
-    server.setRequestHandler(ReadResourceRequestSchema, (args) =>
-      client.readResource(args.params)
-    );
+    server.setRequestHandler(ReadResourceRequestSchema, async (args) => {
+      const response = await client.readResource(args.params);
+
+      for (const item of response.contents) {
+        if (!('text' in item) || typeof item.text !== 'string') {
+          // Binary (blob) resource content isn't supported by CrowdStrike
+          // AIDR, same limitation as tool output below.
+          continue;
+        }
+
+        const outcome = await guardServerText(
+          aiGuard,
+          item.text,
+          'resource_output',
+          identity,
+          serverVersion.name,
+          { resource_uri: args.params.uri }
+        );
+
+        if (outcome.blocked) {
+          throw new Error(
+            `Resource has been blocked by CrowdStrike AIDR.\n\n${JSON.stringify(outcome.blockedReason, null, 2)}`
+          );
+        }
+
+        item.text = outcome.text;
+      }
+
+      return response;
+    });
 
     if (serverCapabilities?.resources.subscribe) {
       server.setNotificationHandler(ResourceUpdatedNotificationSchema, (args) =>
