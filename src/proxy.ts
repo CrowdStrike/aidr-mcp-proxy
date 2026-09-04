@@ -3,65 +3,22 @@
 import { AIGuard } from '@crowdstrike/aidr';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  type CallToolResult,
-  CompleteRequestSchema,
-  type ContentBlock,
-  GetPromptRequestSchema,
-  type ImageContent,
-  type Implementation,
-  ListPromptsRequestSchema,
-  ListResourcesRequestSchema,
-  ListResourceTemplatesRequestSchema,
-  ListToolsRequestSchema,
-  type ListToolsResult,
-  LoggingMessageNotificationSchema,
-  ReadResourceRequestSchema,
-  ResourceUpdatedNotificationSchema,
-  SubscribeRequestSchema,
-  type TextContent,
-  UnsubscribeRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
 import { defineCommand, runMain } from 'citty';
 import { consola } from 'consola';
 import { EnvHttpProxyAgent } from 'undici';
-
-interface TextContentPart {
-  type: 'text';
-  text: string;
-}
-
-interface ImageUrl {
-  url: string;
-}
-
-interface ImageUrlContentPart {
-  type: 'image_url';
-  image_url: ImageUrl;
-}
-
-type ContentPart = TextContentPart | ImageUrlContentPart;
-type MessageContent = string | ContentPart[] | null;
-
-function isTextContent(x: ContentBlock): x is TextContent {
-  return x.type === 'text';
-}
-
-function isImageContent(x: ContentBlock): x is ImageContent {
-  return x.type === 'image';
-}
+import { createProxyServer } from './create-proxy-server.js';
 
 const main = defineCommand({
   args: {},
   async run({ args }) {
-    if (!process.env.CS_AIDR_TOKEN) {
+    const token = process.env.CS_AIDR_TOKEN;
+    if (!token) {
       throw new Error('Missing environment variable: CS_AIDR_TOKEN');
     }
 
-    if (!process.env.CS_AIDR_BASE_URL_TEMPLATE) {
+    const baseURLTemplate = process.env.CS_AIDR_BASE_URL_TEMPLATE;
+    if (!baseURLTemplate) {
       throw new Error(
         'Missing environment variable: CS_AIDR_BASE_URL_TEMPLATE'
       );
@@ -94,284 +51,23 @@ const main = defineCommand({
 
     await client.connect(clientTransport);
 
-    const serverTransport = new StdioServerTransport();
-    const serverCapabilities = client.getServerCapabilities();
-    const serverVersion: Implementation = client.getServerVersion()!;
-    const server = new Server(serverVersion, {
-      capabilities: serverCapabilities,
-      instructions: client.getInstructions(),
+    const dispatcher =
+      new EnvHttpProxyAgent() as unknown as RequestInit['dispatcher'];
+    const aiGuard = new AIGuard({
+      token,
+      baseURLTemplate,
+      fetch: (url: string | URL | Request, init?: RequestInit) =>
+        fetch(url, { ...init, dispatcher }),
     });
 
-    if (serverCapabilities?.logging) {
-      server.setNotificationHandler(LoggingMessageNotificationSchema, (args) =>
-        client.notification(args)
-      );
-    }
+    const server = createProxyServer(client, aiGuard, {
+      appId: process.env.APP_ID,
+      appName: process.env.APP_NAME,
+      userId: process.env.CS_AIDR_USER_ID,
+      userName: process.env.CS_AIDR_USER_NAME,
+    });
 
-    if (serverCapabilities?.prompts) {
-      server.setRequestHandler(GetPromptRequestSchema, (args) =>
-        client.getPrompt(args.params)
-      );
-      server.setRequestHandler(ListPromptsRequestSchema, (args) =>
-        client.listPrompts(args.params)
-      );
-    }
-
-    if (serverCapabilities?.resources) {
-      server.setRequestHandler(ListResourcesRequestSchema, (args) =>
-        client.listResources(args.params)
-      );
-      server.setRequestHandler(ListResourceTemplatesRequestSchema, (args) =>
-        client.listResourceTemplates(args.params)
-      );
-      server.setRequestHandler(ReadResourceRequestSchema, (args) =>
-        client.readResource(args.params)
-      );
-
-      if (serverCapabilities?.resources.subscribe) {
-        server.setNotificationHandler(
-          ResourceUpdatedNotificationSchema,
-          (args) => client.notification(args)
-        );
-        server.setRequestHandler(SubscribeRequestSchema, (args) =>
-          client.subscribeResource(args.params)
-        );
-        server.setRequestHandler(UnsubscribeRequestSchema, (args) =>
-          client.unsubscribeResource(args.params)
-        );
-      }
-    }
-
-    if (serverCapabilities?.tools) {
-      const dispatcher =
-        new EnvHttpProxyAgent() as unknown as RequestInit['dispatcher'];
-      const aiGuard = new AIGuard({
-        token: process.env.CS_AIDR_TOKEN!,
-        baseURLTemplate: process.env.CS_AIDR_BASE_URL_TEMPLATE!,
-        fetch: (url: string | URL | Request, init?: RequestInit) =>
-          fetch(url, { ...init, dispatcher }),
-      });
-
-      server.setRequestHandler(ListToolsRequestSchema, async (args) => {
-        const response: ListToolsResult = await client.listTools(args.params);
-        const { tools } = response;
-        const guardedToolsList = await aiGuard.guardChatCompletions({
-          guard_input: { messages: [], tools },
-          app_id: process.env.APP_ID,
-          event_type: 'tool_listing',
-          user_id: process.env.CS_AIDR_USER_ID,
-          extra_info: {
-            app_name: process.env.APP_NAME,
-            mcp_server_name: serverVersion.name,
-            user_name: process.env.CS_AIDR_USER_NAME,
-          },
-        });
-
-        if (guardedToolsList.status !== 'Success') {
-          throw new Error(
-            `Failed to guard tools list. ${JSON.stringify(guardedToolsList, null, 2)}`
-          );
-        }
-
-        return guardedToolsList.result?.blocked
-          ? { ...response, tools: [] }
-          : response;
-      });
-
-      server.setRequestHandler(CallToolRequestSchema, async (args) => {
-        const guardedInput = await aiGuard.guardChatCompletions({
-          guard_input: {
-            messages: [
-              {
-                role: 'user',
-                content: JSON.stringify(args.params.arguments) ?? '',
-              },
-            ],
-          },
-          app_id: process.env.APP_ID,
-          event_type: 'tool_input',
-          user_id: process.env.CS_AIDR_USER_ID,
-          extra_info: {
-            app_name: process.env.APP_NAME,
-            mcp_server_name: serverVersion.name,
-            tool_name: args.params.name,
-            user_name: process.env.CS_AIDR_USER_NAME,
-          },
-        });
-
-        if (guardedInput.status !== 'Success') {
-          throw new Error('Failed to guard input.');
-        }
-
-        if (guardedInput.result?.blocked) {
-          const { guard_output, ...rest } = guardedInput.result;
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Input has been blocked by CrowdStrike AIDR.\n\n${JSON.stringify(rest, null, 2)}`,
-              },
-            ],
-            isError: true,
-          };
-        }
-
-        const newArgs: Record<string, unknown> = guardedInput.result
-          ?.transformed
-          ? JSON.parse(
-              (
-                guardedInput.result?.guard_output?.messages as {
-                  content: string;
-                }[]
-              )[0].content ?? '{}'
-            )
-          : args.params.arguments;
-
-        const response = (await client.callTool({
-          ...args.params,
-          arguments: newArgs,
-        })) as CallToolResult;
-        const { content, structuredContent } = response;
-
-        if (structuredContent) {
-          // Process structuredContent from tools that return it
-          const guardedOutput = await aiGuard.guardChatCompletions({
-            guard_input: {
-              messages: [
-                {
-                  role: 'tool',
-                  content: JSON.stringify(structuredContent),
-                },
-              ],
-            },
-            app_id: process.env.APP_ID,
-            event_type: 'tool_output',
-            user_id: process.env.CS_AIDR_USER_ID,
-            extra_info: {
-              app_name: process.env.APP_NAME,
-              mcp_server_name: serverVersion.name,
-              tool_name: args.params.name,
-            },
-          });
-
-          if (guardedOutput.status !== 'Success') {
-            throw new Error('Failed to guard output.');
-          }
-
-          if (guardedOutput.result?.blocked) {
-            const { guard_output, ...rest } = guardedOutput.result;
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: `Output has been blocked by CrowdStrike AIDR.\n\n${JSON.stringify(rest, null, 2)}`,
-                },
-              ],
-              isError: true,
-            };
-          }
-
-          if (guardedOutput.result?.transformed) {
-            const contentText = (
-              guardedOutput.result.guard_output?.messages as {
-                content: string;
-              }[]
-            )[0].content;
-
-            try {
-              response.structuredContent = JSON.parse(contentText);
-
-              response.content = [
-                {
-                  type: 'text',
-                  text: JSON.stringify(response.structuredContent),
-                },
-              ];
-            } catch {
-              response.content = [
-                {
-                  type: 'text',
-                  text: contentText,
-                },
-              ];
-            }
-          }
-        } else {
-          // Process content from tools that don't return structuredContent.
-          // Content types other than "text" and "image" are not supported by
-          // CrowdStrike AIDR.
-          for (const contentItem of content.filter(
-            (c) => isTextContent(c) || isImageContent(c)
-          )) {
-            const content: MessageContent = isTextContent(contentItem)
-              ? contentItem.text
-              : [
-                  {
-                    type: 'image_url',
-                    image_url: {
-                      url: `data:${contentItem.mimeType};base64,${contentItem.data}`,
-                    },
-                  },
-                ];
-            const guardedOutput = await aiGuard.guardChatCompletions({
-              guard_input: {
-                messages: [
-                  {
-                    role: 'tool',
-                    content,
-                  },
-                ],
-              },
-              app_id: process.env.APP_ID,
-              event_type: 'tool_output',
-              user_id: process.env.CS_AIDR_USER_ID,
-              extra_info: {
-                app_name: process.env.APP_NAME,
-                mcp_server_name: serverVersion.name,
-                tool_name: args.params.name,
-              },
-            });
-
-            if (guardedOutput.status !== 'Success') {
-              throw new Error('Failed to guard output.');
-            }
-
-            if (guardedOutput.result?.blocked) {
-              const { guard_output, ...rest } = guardedOutput.result;
-              return {
-                content: [
-                  {
-                    type: 'text',
-                    text: `Output has been blocked by CrowdStrike AIDR.\n\n${JSON.stringify(rest, null, 2)}`,
-                  },
-                ],
-                isError: true,
-              };
-            }
-
-            if (
-              isTextContent(contentItem) &&
-              guardedOutput.result?.transformed
-            ) {
-              contentItem.text = (
-                guardedOutput.result.guard_output?.messages as {
-                  content: string;
-                }[]
-              )[0].content;
-            }
-          }
-        }
-
-        return response;
-      });
-    }
-
-    if (serverCapabilities?.completions) {
-      server.setRequestHandler(CompleteRequestSchema, (args) =>
-        client.complete(args.params)
-      );
-    }
-
+    const serverTransport = new StdioServerTransport();
     await server.connect(serverTransport);
   },
 });
