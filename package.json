@@ -24,6 +24,7 @@
     "build": "tsdown && pnpm typecheck",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm run build"
   },
@@ -43,6 +44,7 @@
     "lefthook": "2.0.15",
     "semantic-release": "25.0.8",
     "tsdown": "0.21.10",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^4.1.10"
   }
 }
