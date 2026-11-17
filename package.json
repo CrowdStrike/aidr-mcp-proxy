@@ -42,7 +42,7 @@
     "conventional-changelog-conventionalcommits": "9.3.0",
     "lefthook": "2.0.15",
     "semantic-release": "25.0.9",
-    "tsdown": "0.21.10",
+    "tsdown": "0.23.7",
     "typescript": "5.9.3"
   }
 }
