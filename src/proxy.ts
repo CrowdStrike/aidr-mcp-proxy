@@ -251,6 +251,7 @@ const main = defineCommand({
               app_name: process.env.APP_NAME,
               mcp_server_name: serverVersion.name,
               tool_name: args.params.name,
+              user_name: process.env.CS_AIDR_USER_NAME,
             },
           });
 
@@ -329,6 +330,7 @@ const main = defineCommand({
                 app_name: process.env.APP_NAME,
                 mcp_server_name: serverVersion.name,
                 tool_name: args.params.name,
+                user_name: process.env.CS_AIDR_USER_NAME,
               },
             });
 
