@@ -54,6 +54,22 @@ function isImageContent(x: ContentBlock): x is ImageContent {
   return x.type === 'image';
 }
 
+/** Tool result for a blocked guard response. */
+function blockedToolResult(response: {
+  summary: string;
+  result?: { display_message?: string };
+}): CallToolResult {
+  return {
+    content: [
+      {
+        type: 'text',
+        text: response.result?.display_message ?? response.summary,
+      },
+    ],
+    isError: true,
+  };
+}
+
 const main = defineCommand({
   args: {},
   async run({ args }) {
@@ -204,16 +220,7 @@ const main = defineCommand({
         }
 
         if (guardedInput.result?.blocked) {
-          const { guard_output, ...rest } = guardedInput.result;
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Input has been blocked by CrowdStrike AIDR.\n\n${JSON.stringify(rest, null, 2)}`,
-              },
-            ],
-            isError: true,
-          };
+          return blockedToolResult(guardedInput);
         }
 
         const newArgs: Record<string, unknown> = guardedInput.result
@@ -260,16 +267,7 @@ const main = defineCommand({
           }
 
           if (guardedOutput.result?.blocked) {
-            const { guard_output, ...rest } = guardedOutput.result;
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: `Output has been blocked by CrowdStrike AIDR.\n\n${JSON.stringify(rest, null, 2)}`,
-                },
-              ],
-              isError: true,
-            };
+            return blockedToolResult(guardedOutput);
           }
 
           if (guardedOutput.result?.transformed) {
@@ -339,16 +337,7 @@ const main = defineCommand({
             }
 
             if (guardedOutput.result?.blocked) {
-              const { guard_output, ...rest } = guardedOutput.result;
-              return {
-                content: [
-                  {
-                    type: 'text',
-                    text: `Output has been blocked by CrowdStrike AIDR.\n\n${JSON.stringify(rest, null, 2)}`,
-                  },
-                ],
-                isError: true,
-              };
+              return blockedToolResult(guardedOutput);
             }
 
             if (
